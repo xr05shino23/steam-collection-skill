@@ -1,0 +1,16 @@
+# 凭据与个人配置 - 绝对不要提交!
+scripts/local_config.json
+
+# 浏览器登录会话
+scripts/.browser_profile/
+
+# 运行产物 (含个人游戏库数据)
+step1/
+step2/
+step3/
+step4/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
