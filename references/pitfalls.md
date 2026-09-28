@@ -46,6 +46,17 @@
 | 写入后收藏集消失/不显示 | key 重复或 JSON 非法被客户端忽略 | 写入前双重 json 校验 + key 去重断言；用备份回滚重写 |
 | 长期会话过期 | 数月后 Cookie 失效 | 重新跑一次浏览器登录流程 |
 
+## 增量模式
+
+| 问题 | 现象 | 解法 |
+|---|---|---|
+| 新装游戏没有 A 状态 | "正在玩/计划玩"收藏集里找不到新游戏 | A 是用户个人状态，detect 后必须问用户或按 categories.md 默认档填进 new_rows.csv 再 merge/apply；apply 会逐条列出"需指定 A" |
+| A 状态残留在已卸载游戏上 | 未安装游戏出现在状态收藏集 | apply 自动同步 installed 列并清空 installed=false 行的 A；不要手工只改一列 |
+| 新款查不到元数据 | steamcmd 返回 _missing/无 store_tags（测试款/区域限制） | 按名称 WebSearch 分类；仍定不了 C 的进待确认表，不硬编 |
+| 标签列是数字 ID | steamcmd 的 store_tags 是 id，批次行不可读 | fetch-info 首次自动抓 populartags 生成 data/steam_tags_map.json 并转换；抓不到（需代理）时保留 ID，子代理按名称自行搜索 |
+| 移除的游戏还在收藏集里 | 退款/移除的款仍出现在 Steam 收藏集成员里 | 无害（Steam 忽略不存在的 appid）；要彻底清掉用 `apply --prune` |
+| 重复跑增量产生重复行 | 同一 appid 追加两次 | 不会：apply 按 appid 覆盖/追加去重；总表是唯一基准，不设独立 state 文件 |
+
 ## 通用
 
 - 一切覆盖写操作前先备份（旧表/目标文件），时间戳命名

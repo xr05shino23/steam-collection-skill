@@ -1,6 +1,6 @@
 ---
 name: steam-collection
-description: 全自动把用户的 Steam 游戏库分类为 Steam 收藏集并写入 Steam 客户端。四步流程：①抓取游戏列表（多方法可选，含浏览器登录）②设计/预生成分类体系并预分类 ③联网逐款复核修正 ④生成收藏集并写入（写前确认）。当用户要求"给 Steam 库存分类/建收藏集/整理游戏库"时使用。
+description: 全自动把用户的 Steam 游戏库分类为 Steam 收藏集并写入 Steam 客户端。四步流程：①抓取游戏列表（多方法可选，含浏览器登录）②设计/预生成分类体系并预分类 ③联网逐款复核修正 ④生成收藏集并写入（写前确认）；已完成分类后库里新增游戏走增量模式（只分类新增部分）。当用户要求"给 Steam 库存分类/建收藏集/整理游戏库"，或说"又买了新游戏/库存更新了/更新收藏集/增量"时使用。
 ---
 
 # Steam 游戏库收藏集分类
@@ -29,6 +29,8 @@ description: 全自动把用户的 Steam 游戏库分类为 Steam 收藏集并�
    - 已导出的游戏列表 CSV → 校验格式（见下）后直接进入步骤2
    - 已定义的分类类目文档 → 校验编码无空位、兜底类在最后后直接进入预分类
    - 已完成的分类表 → 直接进入步骤4
+   - **已完成过一轮全流程**（有分类总表，之后库里加了新游戏）→ 走**增量模式**（见下），
+     只处理新增/移除/指定重分类的部分，不重跑四步
 3. **环境与偏好**：本机是否装有 Steam 客户端（写入必需）；是否有代理及其地址；是否安装
    Python 3 + requests；步骤3 若跑全量复核，询问用户的时间/预算偏好与子代理并发限额
    （不确定则按默认策略运行中探测）。
@@ -112,6 +114,23 @@ description: 全自动把用户的 Steam 游戏库分类为 Steam 收藏集并�
 4. 写入成功后提示用户启动 Steam 查看效果，并告知回滚方法（备份文件覆盖回原位）。
    **汇报**并等用户确认生效。
 
+## 增量模式：已分类过，库里加了新游戏
+
+适用：`step2/preclassification.csv` 已存在且基本完整，之后买了/领了新游戏、退款移除了
+游戏、或需要修正个别游戏。不重跑四步，只处理与总表的差异。
+详细协议见 `references/incremental-guide.md`，产出放 `step5/`。
+
+1. `python scripts/fetch_library.py` 刷新列表（diff 报告即新增/移除/安装变化）
+2. `python scripts/incremental.py detect [appid ...]` → `step5/diff_report.txt`；
+   位置参数可强制重分类指定款（待确认的/用户点名的）
+3. **新装游戏的 A 状态必须问用户**（或按 categories.md 默认档填写）——A 是用户个人状态
+4. `python scripts/incremental.py fetch-info` 增量抓元数据（缓存续传，含标签 ID→名称映射）
+5. 分类新增款：量少（≤10 款）主会话逐款搜索直接分；量多走 `prepare` → 子代理
+   （协议同步骤3）→ `merge`
+6. 汇报新增/移除/A 状态/待确认 → 用户确认后 `incremental.py apply [--prune]` 合并总表
+   （自动同步 installed 列、清空已卸载款的 A、备份后写入）
+7. 重跑 `build_collections.py` → 写前确认 → `write_steam.py`（与步骤4相同）
+
 ## 通用守则
 
 - 每步产出物放独立子目录（`step1/` `step2/` …），保持工作区整洁
@@ -132,6 +151,7 @@ steam-collection-skill/
     categories-guide.md        步骤2 ABCDE 类目方法论与预生成流程
     methods-review.md          步骤3 标签来源与子代理批处理协议
     write-guide.md             步骤4 云存储格式与写入协议
+    incremental-guide.md       增量模式：新增游戏只分类新增部分
     pitfalls.md                实战踩坑清单（遇到异常先查这里）
   scripts/
     local_config.template.json 配置模板（使用前复制为 local_config.json 并填写）
@@ -139,4 +159,5 @@ steam-collection-skill/
     build_collections.py       步骤4 收藏集 JSON 生成
     write_steam.py             步骤4 写入（守卫/备份/原子写）
     review_tools.py            步骤3 批次切分/汇总/回写工具
+    incremental.py             增量模式 detect/fetch-info/prepare/merge/apply
 ```

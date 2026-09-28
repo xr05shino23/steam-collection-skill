@@ -14,3 +14,7 @@ step4/
 __pycache__/
 *.pyc
 .venv/
+
+# 增量模式产物与缓存
+step5/
+data/
